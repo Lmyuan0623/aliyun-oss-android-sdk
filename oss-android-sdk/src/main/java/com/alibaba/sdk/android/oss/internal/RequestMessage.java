@@ -1,7 +1,6 @@
 package com.alibaba.sdk.android.oss.internal;
 
 import com.alibaba.sdk.android.oss.common.HttpMethod;
-import com.alibaba.sdk.android.oss.callback.OSSCompletedCallback;
 import com.alibaba.sdk.android.oss.common.OSSConstants;
 import com.alibaba.sdk.android.oss.common.OSSHeaders;
 import com.alibaba.sdk.android.oss.common.OSSLog;
@@ -9,7 +8,6 @@ import com.alibaba.sdk.android.oss.common.auth.OSSCredentialProvider;
 import com.alibaba.sdk.android.oss.common.utils.HttpUtil;
 import com.alibaba.sdk.android.oss.common.utils.HttpdnsMini;
 import com.alibaba.sdk.android.oss.common.utils.OSSUtils;
-import com.alibaba.sdk.android.oss.ClientException;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -34,6 +32,8 @@ public class RequestMessage {
 
     private OSSCredentialProvider credentialProvider;
     private boolean isHttpdnsEnable = true;
+
+    private boolean isInCustomCnameExcludeList = false;
 
     private byte[] uploadData;
     private String uploadFilePath;
@@ -146,6 +146,14 @@ public class RequestMessage {
         this.isAuthorizationRequired = isAuthorizationRequired;
     }
 
+    public boolean isInCustomCnameExcludeList() {
+        return isInCustomCnameExcludeList;
+    }
+
+    public void setIsInCustomCnameExcludeList(boolean isInExcludeCnameList) {
+        this.isInCustomCnameExcludeList = isInExcludeCnameList;
+    }
+
     public void setUploadInputStream(InputStream uploadInputStream, long inputLength) {
         if (uploadInputStream != null) {
             this.uploadInputStream = uploadInputStream;
@@ -182,7 +190,8 @@ public class RequestMessage {
         String scheme = endpoint.getScheme();
         String originHost = endpoint.getHost();
 
-        if (!OSSUtils.isCname(originHost) && bucketName != null) {
+        // 如果不是Cname，或者用户在clientconfiguration中规定它不是cname，就要加上bucketName作为host
+        if ((!OSSUtils.isCname(originHost) || this.isInCustomCnameExcludeList()) && bucketName != null) {
             originHost = bucketName + "." + originHost;
         }
 
